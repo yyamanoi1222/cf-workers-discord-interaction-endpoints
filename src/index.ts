@@ -27,9 +27,9 @@ export default {
       return new Response(JSON.stringify({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: `You used: ${interaction.data.name}`
-        },
-      }));
+          content: 'Hello World!'
+        }
+      }), { headers: { 'Content-Type': 'application/json' } });
     } else {
       return new Response(JSON.stringify({
         type: InteractionResponseType.PONG,
