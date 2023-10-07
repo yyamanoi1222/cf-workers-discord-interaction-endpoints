@@ -1,32 +1,41 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { InteractionResponseType, InteractionType, verifyKey } from 'discord-interactions'
 
 export interface Env {
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	// MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
-	//
-	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-	// MY_QUEUE: Queue;
+  CLIENT_PUBLIC_KEY: string
+}
+
+type InteractionBody = {
+  type: InteractionType,
+  data: {
+    name: string
+  }
 }
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		return new Response('Hello World!');
-	},
+    const sig = request.headers.get('X-Signature-Ed25519');
+    const time = request.headers.get('X-Signature-Timestamp');
+    const body = await request.json<InteractionBody>();
+    const isValid = await verifyKey(JSON.stringify(body), sig, time, env.CLIENT_PUBLIC_KEY);
+
+    if (!isValid) {
+		  return new Response('invalid request');
+    }
+
+    const interaction = body;
+    if(interaction && interaction.type === InteractionType.APPLICATION_COMMAND) {
+      return new Response(JSON.stringify({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `You used: ${interaction.data.name}`
+        },
+      }));
+    } else {
+      return new Response(JSON.stringify({
+        type: InteractionResponseType.PONG,
+      }));
+    }
+
+    return new Response('Hello World!');
+  },
 };
